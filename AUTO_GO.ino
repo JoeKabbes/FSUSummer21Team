@@ -79,5 +79,5 @@ void loop() {
   left();     //turning left
   delay(1000);
   right();    //turning right
-  delay(5000);
+  delay(1000);
 }
