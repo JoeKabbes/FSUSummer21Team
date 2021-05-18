@@ -404,27 +404,35 @@ void loop() {
     // Begin Left turn
     case TURNLEFT:
       lastState = state;
+      state = TURNING;
       left(SPEED, turnTimes[turnIndex]);
       break;
 
     // Begin Left 45 turn
     case TURNLEFT45:
       lastState = state;
+      state = TURNING;
       left(SPEED, turnTimes[turnIndex]);
       break;
 
     //Begin Right 45 turn
     case TURNRIGHT45:
       lastState = state;
+      state = TURNING;
       right(SPEED, turnTimes[turnIndex]);
       break;
 
     // Begin Right turn
     case TURNRIGHT:
       lastState = state;
+      state = TURNING;
       right(SPEED, turnTimes[turnIndex]);
       break;
 
+    // State for all turns active
+    case TURNING:
+      break;
+                       
     // Handle STOP for all turns
     case TURNSTOP:
       timer.cancel();
@@ -515,10 +523,5 @@ void loop() {
       } else
         state = BACK;
       break;
-
-    // State for all turns active
-    case TURNING:
-      break;
   }
-                       
 }
