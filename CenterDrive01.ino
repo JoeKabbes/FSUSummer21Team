@@ -1,4 +1,5 @@
-//FSU JPL Summer Team - Object Avoidance 
+//FSU JPL Summer Team - CenterDrive
+// 
 #define MAXDISTANCE 175
 #define MINDISTANCE 40
 #define RUNDISTANCE 60
@@ -34,6 +35,7 @@ Timer<> ledBlinker;  // Timer object for LED
 int Echo = A4;  
 int Trig = A5; 
 
+// Motor enable and direction pins
 #define ENA 5
 #define ENB 6
 #define IN1 7
@@ -45,6 +47,8 @@ int Trig = A5;
 
 #define BACKTIME 500
 
+// State definitions
+//
 #define STOP 0
 #define STOPPED 1
 #define STOPPING 2
@@ -68,6 +72,7 @@ int turnIndex = 2;
 int state = HARDSTOP;
 bool wasBacking = false;
 
+// Angle definitions
 #define RIGHT   0
 #define RIGHT7  1
 #define RIGHT15 2
@@ -91,6 +96,7 @@ bool wasBacking = false;
 
 int angles[] = {0, 7, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 173, 180};
 
+// Times for turning - deprecate
 int turnTimes[] = {540, 300, 0, 300, 540};
 int distances[MAXANGLES];
 int scanCount = 0;
@@ -226,6 +232,15 @@ int delayTime(int power, int cm) {
   return (int)((float)cm *10 / (0.0028*(float)power + 0.00595));
 }
 
+//  Compute turn time in MS
+//  IN: power (to be used later, default 150)
+//      angle degrees
+//  RETURN: ms delaytime
+//
+int delayTurn(int power, int angle) {
+  return 0;  // need to fill in code
+}
+
 //  Set servo position
 //  IN: degrees
 //      servo delay
@@ -293,7 +308,7 @@ void scan(int right, int left, int delayTime) {
 
 //  Return pose angle
 //  IN: none (distances scanned)
-//  RETURN: pose angle
+//  RETURN: pose angle relative to wall
 //
 int poseAngle() {
   int minValue = 999;
@@ -304,40 +319,49 @@ int poseAngle() {
   bool rightEdge = false;
   bool leftEdge = false;
   char buffer[80];
-  
+
+  // get minimum distance and angle index
   for (int i= 0; i < MAXANGLES; i++) {
     if (distances[i] < minValue) {
       minValue = distances[i];
       minIndex = i;
     }
   }
+  
   // have min and index
   // work R & L of index
   rightIndex = leftIndex = minIndex;
   while (true) {
+    // increment right index and check
     rightIndex = rightIndex-1;
     if (rightIndex < 0) {
       rightIndex = 0;
       rightEdge = true;
     }
 
+    // increment left index and check
     leftIndex = leftIndex+1;
     if (leftIndex >= MAXANGLES) {
       leftIndex = MAXANGLES-1;
       leftEdge = true;
     }
 
+    // reached right limit?
     if (distances[rightIndex] > minValue * 1.15 ) {
       rightEdge = true;
       rightIndex++;
     }
+
+    // reached left limit?
     if (distances[leftIndex] > minValue * 1.15 ) {
       leftEdge = true;
       leftIndex--;
     }
+    
     // exit loop when both sides on mimima are found
     if (rightEdge && leftEdge) break;
   }
+  
   //  Now average the angles and return
   sumAngles = 0;
   for (int i = rightIndex; i <= leftIndex; i++ ) {
@@ -475,7 +499,7 @@ void dumpDistances() {
 //
 void setup() { 
   myservo.attach(3);  // attach servo on pin 3 to servo object
-  IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK); // Start the receiver
+  //IrReceiver.begin(IR_RECEIVE_PIN, DISABLE_LED_FEEDBACK); // Start the receiver
   Serial.begin(9600);     
   pinMode(Echo, INPUT);    
   pinMode(Trig, OUTPUT);  
@@ -486,7 +510,7 @@ void setup() {
   pinMode(ENA, OUTPUT);
   pinMode(ENB, OUTPUT);
   stop();
-  state = HARDSTOP;
+  state = STOPPED;
 } 
 int lastState = STOPPED;
 
@@ -508,6 +532,7 @@ void loop() {
    
   switch (state) {
 
+    // Stop and do nothing
     case HARDSTOP:
       break;
       
@@ -527,62 +552,27 @@ void loop() {
       Serial.println("Stopped");
       scan(RIGHT, LEFT, SERVODELAY);
       dumpDistances();
-      //if (state != STOPPED) break;
 
-      if (closest() >= RUNDISTANCE) {
-        Serial.println(closest());
-        state = STARTFORWARD;
-        break;
-      }
-        
       carAngle = poseAngle();
       sprintf(buffer, "Pose: %d", carAngle);
       Serial.println(buffer);
-      if (carAngle >= 0 && carAngle < 45 )
-        state = TURNLEFT45;
-      if (carAngle >= 45 && carAngle < 90 )
-        state = TURNLEFT;
-      if (carAngle >= 90 && carAngle < 135 )
-        state = TURNRIGHT;
-      if (carAngle >= 135  && carAngle <= 180)
-        state = TURNRIGHT45;
-
-      if (farthest(RIGHT45, LEFT45) < MINDISTANCE) {
-        state = BACK;
-        break;
-      }
       break;
 
-    // Begin Left turn
-    case TURNLEFT:
-      lastState = state;
-      state = TURNING;
-      turnDelay = turnTimes[0];
-      left(SPEED, turnDelay);
-      break;
+//    // Begin Left turn
+//    case TURNLEFT:
+//      break;
+//    // Begin Left 45 turn
+//    case TURNLEFT45:
+//      break;
+//    //Begin Right 45 turn
+//    case TURNRIGHT45:
+//      break;
+//    // Begin Right turn
+//    case TURNRIGHT:
+//      break;
 
-    // Begin Left 45 turn
-    case TURNLEFT45:
-      lastState = state;
-      state = TURNING;
-      turnDelay = turnTimes[1];
-      left(SPEED, turnDelay);
-      break;
-
-    //Begin Right 45 turn
-    case TURNRIGHT45:
-      lastState = state;
-      state = TURNING;
-      turnDelay = turnTimes[3];
-      right(SPEED, turnDelay);
-      break;
-
-    // Begin Right turn
-    case TURNRIGHT:
-      lastState = state;
-      state = TURNING;
-      turnDelay = turnTimes[4];
-      right(SPEED, turnDelay);
+    // Generic turn start
+    case TURN:
       break;
 
     // State for all turns active
@@ -592,23 +582,16 @@ void loop() {
     // Handle STOP for all turns
     case TURNSTOP:
       timer.cancel();
-      scan(RIGHT, LEFT, 350);
-      if (state != TURNSTOP) break;
-      
-      blinkLED();
-      if (closest(RIGHT60, LEFT60) > MINDISTANCE) {
-        state = STARTFORWARD;
-        break;
-      }
       state = STOPPED;
       break;
 
     // Begin forward motion
     case STARTFORWARD:
       timer.cancel();
-      wasBacking = false;
       setServo(90, 350);
       scan(RIGHT, LEFT, SERVODELAY);
+
+      // compute distance to travel
       closeDistance = closest(RIGHT45, LEFT45)-MINDISTANCE-OFFSET;
       delayMS = delayTime(SPEED, closeDistance);
       sprintf(buffer, "DMS: %d RNG: %d", delayMS, closeDistance);
@@ -621,6 +604,8 @@ void loop() {
    // Continue forward
     case CONTINUEFORWARD:
       timer.cancel();
+
+      // compute distance to travel
       delayMS = delayTime(SPEED, closeDistance-MINDISTANCE-OFFSET);
       forward(SPEED, delayMS);
       state = FORWARD;
@@ -628,36 +613,6 @@ void loop() {
       
    // Moving Forward
     case FORWARD:
-    // Scan 45 degrees R/L every N times
-      if ((scanCount % 24) == 0) {
-          scan(RIGHT, LEFT, 200);
-          if (state != FORWARD) break;
-          closeDistance = closest(RIGHT, LEFT);
-      } else if ((scanCount % 8) == 0) {
-          scan(RIGHT60, LEFT60, 200);
-          if (state != FORWARD) break;
-          closeDistance = closest(RIGHT60, LEFT60);
-      } else {
-        scan(FRONT, FRONT, 0);
-        if (state != FORWARD) break;
-        closeDistance = distances[FRONT];
-      }
-      scanCount++;
-      
-      sprintf(buffer, "FWD: %d", closeDistance);
-      Serial.println(buffer);
-      
-      if ( closeDistance < RUNDISTANCE) {
-        forwardSpeed(SLOWSPEED);
-      }
-      if (closeDistance >= RUNDISTANCE) {
-        state = CONTINUEFORWARD;
-      }
-      
-      if ( closeDistance < MINDISTANCE ) {
-        Serial.println(closeDistance);
-        state = STOP;
-      }
       break;
 
     // Begin Back movement
@@ -674,36 +629,6 @@ void loop() {
     // STOP state for back movement
     case BACKSTOP:
       scan(RIGHT, LEFT, SERVODELAY);
-      if (state != BACKSTOP) break;
-      if (farthest(RIGHT,LEFT) < MINDISTANCE) {
-        state = BACK;
-        break;
-      }
-      furthestDirection = farthestDirection(RIGHT, LEFT);
-      switch (furthestDirection) {
-        case LEFT:
-        case LEFT30:
-          state = TURNLEFT;
-          break;
-        //case LEFT45:
-        case LEFT60:
-          state = TURNLEFT45;
-          break;
-        case FRONT:
-          state = STARTFORWARD;
-          break;
-        //case RIGHT45:
-        case RIGHT60:
-          state = TURNRIGHT45;
-          break;
-        case RIGHT:
-        case RIGHT30:
-          state = TURNRIGHT;
-          break;
-        default:
-          state = STARTFORWARD;
-          break;
-      }
       break;
   }
 }
